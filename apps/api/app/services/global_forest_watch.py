@@ -73,12 +73,15 @@ async def get_forest_loss(lat: float, lon: float) -> dict:
     sql = (
         "SELECT umd_tree_cover_loss__year, SUM(area__ha) AS area__ha "
         "FROM data "
-        "WHERE umd_tree_cover_loss__threshold = 30 "
         "GROUP BY umd_tree_cover_loss__year "
         "ORDER BY umd_tree_cover_loss__year"
     )
     body = {"geometry": _polygon(lat, lon), "sql": sql}
-    headers = {"Content-Type": "application/json"}
+    headers = {
+        "Content-Type": "application/json",
+        # GFW keys are domain-locked. Match the Origin we registered the key under.
+        "Origin": "http://localhost",
+    }
     if settings.GFW_API_KEY:
         headers["x-api-key"] = settings.GFW_API_KEY
         base["auth_required"] = True

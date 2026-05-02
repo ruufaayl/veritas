@@ -18,9 +18,13 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-AUTH_URL = "https://services.sentinel-hub.com/auth/realms/main/protocol/openid-connect/token"
-STATISTICS_URL = "https://services.sentinel-hub.com/api/v1/statistics"
-PROCESS_URL = "https://services.sentinel-hub.com/api/v1/process"
+CLASSIC_AUTH_URL = "https://services.sentinel-hub.com/auth/realms/main/protocol/openid-connect/token"
+CLASSIC_BASE = "https://services.sentinel-hub.com"
+CDSE_AUTH_URL = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+CDSE_BASE = "https://sh.dataspace.copernicus.eu"
+
+# Resolved at runtime by get_auth_token(): "classic" or "cdse"
+_active_realm: str = "classic"
 
 NDVI_EVALSCRIPT = """//VERSION=3
 function setup() { return { input: ["B04","B08","dataMask"], output: { bands: 1 } } }
@@ -46,32 +50,54 @@ def _bbox(lat: float, lon: float, half: float = 0.1) -> list[float]:
     return [lon - half, lat - half, lon + half, lat + half]
 
 
+def _stats_endpoint() -> str:
+    return f"{CDSE_BASE if _active_realm == 'cdse' else CLASSIC_BASE}/api/v1/statistics"
+
+
+def _process_endpoint() -> str:
+    return f"{CDSE_BASE if _active_realm == 'cdse' else CLASSIC_BASE}/api/v1/process"
+
+
 async def get_auth_token() -> str:
-    """Fetch a SentinelHub OAuth2 access token. Returns "" on failure."""
+    """Fetch a SentinelHub OAuth2 access token. Tries classic SH first,
+    falls back to Copernicus Dataspace (CDSE). Returns "" on failure.
+    """
+    global _active_realm
     started = time.perf_counter()
     client_id = settings.SENTINEL_HUB_CLIENT_ID
     client_secret = settings.SENTINEL_HUB_CLIENT_SECRET
     if not (client_id and client_secret):
         logger.warning("sentinel auth: client id/secret not configured")
         return ""
+
+    body = {
+        "grant_type": "client_credentials",
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
+    hdrs = {"Content-Type": "application/x-www-form-urlencoded"}
+
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
-            response = await client.post(
-                AUTH_URL,
-                data={
-                    "grant_type": "client_credentials",
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-            response.raise_for_status()
-            token = response.json().get("access_token") or ""
-            logger.info("sentinel auth ok (%dms)", _ms(started))
-            return token
+            for realm, url in (("classic", CLASSIC_AUTH_URL), ("cdse", CDSE_AUTH_URL)):
+                resp = await client.post(url, data=body, headers=hdrs)
+                if resp.status_code == 200:
+                    token = resp.json().get("access_token") or ""
+                    if token:
+                        _active_realm = realm
+                        logger.info("sentinel auth ok via %s (%dms)", realm, _ms(started))
+                        return token
+                logger.info(
+                    "sentinel auth %s -> HTTP %d (%s)",
+                    realm,
+                    resp.status_code,
+                    resp.text[:120],
+                )
     except Exception as exc:  # noqa: BLE001
-        logger.warning("sentinel auth failed: %s (%dms)", exc, _ms(started))
+        logger.warning("sentinel auth exception: %s (%dms)", exc, _ms(started))
         return ""
+    logger.warning("sentinel auth: both realms refused (%dms)", _ms(started))
+    return ""
 
 
 def _stats_request(bbox: list[float], from_date: str, to_date: str) -> dict[str, Any]:
@@ -130,7 +156,7 @@ async def _ndvi_for_window(
     started = time.perf_counter()
     try:
         response = await client.post(
-            STATISTICS_URL,
+            _stats_endpoint(),
             json=_stats_request(bbox, from_date, to_date),
             headers={
                 "Authorization": f"Bearer {token}",
@@ -286,7 +312,7 @@ async def get_satellite_image_b64(lat: float, lon: float) -> str | None:
     try:
         async with httpx.AsyncClient(timeout=45.0) as client:
             response = await client.post(
-                PROCESS_URL,
+                _process_endpoint(),
                 json=body,
                 headers={
                     "Authorization": f"Bearer {token}",
