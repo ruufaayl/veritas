@@ -62,6 +62,6 @@ async def health():
             "mapbox": bool(settings.MAPBOX_TOKEN),
             "groq": bool(settings.GROQ_API_KEY),
             "anthropic": bool(settings.ANTHROPIC_API_KEY),
-            "global_forest_watch": True,
+            "global_forest_watch": bool(settings.GFW_API_KEY),
         },
     }

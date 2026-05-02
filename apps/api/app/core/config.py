@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     MAPBOX_TOKEN: str = ""
     GROQ_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+    GFW_API_KEY: str = ""
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/veritas"
 
 

@@ -13,6 +13,8 @@ from typing import Any
 
 import httpx
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 GFW_BASE = "https://data-api.globalforestwatch.org"
@@ -77,6 +79,9 @@ async def get_forest_loss(lat: float, lon: float) -> dict:
     )
     body = {"geometry": _polygon(lat, lon), "sql": sql}
     headers = {"Content-Type": "application/json"}
+    if settings.GFW_API_KEY:
+        headers["x-api-key"] = settings.GFW_API_KEY
+        base["auth_required"] = True
 
     try:
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
