@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,13 +9,24 @@ from app.core.database import Base, engine
 from app.models import audit as _audit_model  # noqa: F401  (register model on Base)
 from app.routers import audit, dashboard, report
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    await engine.dispose()
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("database: tables ensured")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("database: skipping create_all (%s)", exc)
+    try:
+        yield
+    finally:
+        try:
+            await engine.dispose()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 app = FastAPI(title="VERITAS Oracle API", version="1.0.0", lifespan=lifespan)
