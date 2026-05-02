@@ -1,0 +1,92 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+:root {
+  --color-bg: #080808;
+  --color-bg-elevated: #111111;
+  --color-bg-panel: #141414;
+  --color-border: rgba(201, 168, 76, 0.15);
+
+  --color-gold: #c9a84c;
+  --color-gold-bright: #e8c96a;
+  --color-gold-dim: rgba(201, 168, 76, 0.4);
+
+  --color-text-primary: #f5f0e8;
+  --color-text-secondary: rgba(245, 240, 232, 0.6);
+  --color-text-muted: rgba(245, 240, 232, 0.3);
+
+  --color-risk-low: #4caf7d;
+  --color-risk-medium: #e8a44a;
+  --color-risk-high: #e85a4a;
+  --color-risk-critical: #c42b2b;
+
+  --font-display: "Playfair Display", serif;
+  --font-body: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  color: var(--color-text-primary);
+  margin: 0 0 0.5em;
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-mono);
+}
+
+a {
+  color: var(--color-gold-bright);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--color-gold);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-elevated);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gold-dim);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gold-dim) var(--color-bg-elevated);
+}
