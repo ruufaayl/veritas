@@ -14,6 +14,8 @@ import time
 import httpx
 from bs4 import BeautifulSoup
 
+from app.services import verra_cache
+
 logger = logging.getLogger(__name__)
 
 REGISTRY_URLS = {
@@ -62,6 +64,52 @@ def _empty_result(serial: str) -> dict:
         "project_status": None,
         "coordinates_approximate": False,
         "registry_url": None,
+        "data_source": None,
+        "error": None,
+    }
+
+
+async def _try_verra_cache(
+    client: httpx.AsyncClient, serial: str, numeric_id: str
+) -> dict | None:
+    """Hit the SQLite cache built from Verra public reports first. Returns
+    a partially-populated registry dict if found, else None."""
+    try:
+        cached = await verra_cache.lookup_project(int(numeric_id))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("verra_cache lookup failed for %s: %s", serial, exc)
+        return None
+    if not cached:
+        return None
+
+    country = cached.get("country")
+    lat = lon = None
+    coords_approx = False
+    if country:
+        lat, lon = await _geocode_country(client, country)
+        coords_approx = lat is not None
+
+    credits = cached.get("credits_released")
+    if credits is None:
+        credits = cached.get("last_issuance_units")
+
+    return {
+        "found": True,
+        "serial": serial,
+        "registry": REGISTRY_NAMES["VCS"],
+        "project_name": cached.get("project_name"),
+        "country": country,
+        "lat": lat,
+        "lon": lon,
+        "hectares": None,
+        "methodology": cached.get("project_type"),
+        "credits_issued": credits,
+        "last_verification_date": cached.get("last_issuance_vintage"),
+        "developer_name": None,
+        "project_status": "Active" if cached.get("buffer_available") else None,
+        "coordinates_approximate": coords_approx,
+        "registry_url": REGISTRY_URLS["VCS"].format(id=numeric_id),
+        "data_source": f"verra_cache ({cached.get('source_report')})",
         "error": None,
     }
 
@@ -151,6 +199,19 @@ async def lookup_serial(serial: str) -> dict:
         async with httpx.AsyncClient(
             timeout=20.0, follow_redirects=True, headers=DEFAULT_HEADERS
         ) as client:
+            # VCS-* serials: try the SQLite cache first (real metadata from
+            # Verra's public reports). Skip the brittle HTML scrape if we hit.
+            if registry == "VCS":
+                cached_result = await _try_verra_cache(client, serial, numeric_id)
+                if cached_result:
+                    logger.info(
+                        "registry %s -> cache hit: %s (%dms)",
+                        serial,
+                        cached_result["project_name"],
+                        _ms(started),
+                    )
+                    return cached_result
+
             response = await client.get(url)
             if response.status_code >= 400:
                 result["error"] = f"Registry returned HTTP {response.status_code}"
@@ -202,6 +263,7 @@ async def lookup_serial(serial: str) -> dict:
                     "developer_name": developer_name,
                     "project_status": project_status,
                     "coordinates_approximate": coordinates_approximate,
+                    "data_source": "registry_html",
                 }
             )
     except httpx.TimeoutException:
