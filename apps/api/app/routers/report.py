@@ -84,8 +84,14 @@ async def _load_payload(audit_id: str) -> dict:
 
 @router.get("/{audit_id}.html")
 async def render_report_html(audit_id: str) -> Response:
+    """Browser preview — interactive slide viewer (not the PDF layout).
+
+    The PDF still uses pdf_generator._build_html() via render_pdf_bytes;
+    this route serves a different, JS-driven, fullscreen presentation
+    of the same 12 pages so layout iteration doesn't require Docker.
+    """
     payload = await _load_payload(audit_id)
-    html_str = pdf_generator._build_html(payload)
+    html_str = pdf_generator._build_preview_html(payload)
     return Response(content=html_str, media_type="text/html; charset=utf-8")
 
 

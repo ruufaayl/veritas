@@ -7,13 +7,28 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-export async function runAudit(serial) {
-  const { data } = await api.post("/audit", { serial });
-  return data;
+/** Returns the configured API base URL.
+ *  EventSource doesn't go through axios, so the AuditFlow hook needs the
+ *  raw string to build `${base}/audit/{id}/stream`. Reading
+ *  import.meta.env.VITE_API_URL twice (once here, once in the hook) is
+ *  fine, but we centralize it so the hook can't accidentally hardcode
+ *  localhost — that would break the Vercel build. */
+export function getApiBaseUrl() {
+  return baseURL.replace(/\/$/, "");
+}
+
+export async function startAudit(serial) {
+  const { data } = await api.post("/audit/start", { serial });
+  return data; // { audit_id, message }
 }
 
 export async function getAuditStatus(auditId) {
   const { data } = await api.get(`/audit/${auditId}`);
+  return data;
+}
+
+export async function getAuditHistory() {
+  const { data } = await api.get(`/audit/history`);
   return data;
 }
 
@@ -22,7 +37,20 @@ export async function getDashboardData() {
   return data;
 }
 
-export async function downloadReport(auditId) {
-  const response = await api.get(`/report/${auditId}`, { responseType: "blob" });
-  return response.data;
+export async function getHealth() {
+  const { data } = await api.get("/health");
+  return data;
+}
+
+export async function getAuditById(auditId) {
+  const { data } = await api.get(`/audit/${auditId}`);
+  return data;
+}
+
+export function reportPdfUrl(auditId) {
+  return `${getApiBaseUrl()}/report/${auditId}`;
+}
+
+export function reportHtmlUrl(auditId) {
+  return `${getApiBaseUrl()}/report/${auditId}.html`;
 }

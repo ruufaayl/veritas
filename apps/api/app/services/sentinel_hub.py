@@ -268,16 +268,22 @@ async def get_ndvi_timeseries(lat: float, lon: float) -> dict:
     return base
 
 
-async def get_satellite_image_b64(lat: float, lon: float) -> str | None:
+async def _fetch_truecolor_b64(
+    lat: float, lon: float,
+    from_date: str, to_date: str,
+    label: str,
+) -> str | None:
+    """Shared Process API call for true-color Sentinel-2 RGB tiles.
+
+    Returns base64-encoded JPEG or None on any failure. `label` is a
+    short tag used in logs to disambiguate concurrent requests
+    (e.g. "current" vs "3yr_ago").
+    """
     started = time.perf_counter()
     token = await get_auth_token()
     if not token:
-        logger.warning("sentinel image: no token")
+        logger.warning("sentinel image[%s]: no token", label)
         return None
-
-    today = datetime.utcnow().date()
-    from_date = (today - timedelta(days=90)).isoformat()
-    to_date = today.isoformat()
 
     body = {
         "input": {
@@ -322,14 +328,44 @@ async def get_satellite_image_b64(lat: float, lon: float) -> str | None:
             )
             if response.status_code != 200:
                 logger.warning(
-                    "sentinel image -> HTTP %d (%dms)", response.status_code, _ms(started)
+                    "sentinel image[%s] -> HTTP %d (%dms)",
+                    label, response.status_code, _ms(started),
                 )
                 return None
             encoded = base64.b64encode(response.content).decode("ascii")
             logger.info(
-                "sentinel image: %d bytes (%dms)", len(response.content), _ms(started)
+                "sentinel image[%s]: %d bytes (%dms)",
+                label, len(response.content), _ms(started),
             )
             return encoded
     except Exception as exc:  # noqa: BLE001
-        logger.warning("sentinel image failed: %s", exc)
+        logger.warning("sentinel image[%s] failed: %s", label, exc)
         return None
+
+
+async def get_satellite_image_b64(lat: float, lon: float) -> str | None:
+    """Most-recent true-color Sentinel-2 RGB tile (last 90 days)."""
+    today = datetime.utcnow().date()
+    from_date = (today - timedelta(days=90)).isoformat()
+    to_date = today.isoformat()
+    return await _fetch_truecolor_b64(lat, lon, from_date, to_date, "current")
+
+
+async def get_historical_image_b64(
+    lat: float, lon: float, years_ago: int = 3
+) -> str | None:
+    """Historical true-color tile from N years ago.
+
+    Uses a 30-day window starting at the target date so the mosaicking
+    pass has multiple revisits to pick the cleanest cloud-free image
+    from. Never raises — returns None on auth failure, HTTP non-200,
+    or transport error.
+    """
+    today = datetime.utcnow().date()
+    start = today - timedelta(days=years_ago * 365)
+    end = start + timedelta(days=30)
+    return await _fetch_truecolor_b64(
+        lat, lon,
+        start.isoformat(), end.isoformat(),
+        f"{years_ago}yr_ago",
+    )

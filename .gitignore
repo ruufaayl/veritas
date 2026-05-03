@@ -23,3 +23,6 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Generated PDF preview (regenerate via apps/api/test_pdf.py)
+apps/api/preview.html

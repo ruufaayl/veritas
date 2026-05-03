@@ -251,23 +251,36 @@ async def _run_pipeline(audit_id: str, serial: str, queue: asyncio.Queue) -> Non
                              f"(nearest {fire_data.get('nearest_fire_km')} km){approx_suffix}"),
                     data=fire_data)
 
-        # ── Step 4: Sentinel image ──────────────────────────────────────
+        # ── Step 4: Sentinel image — current + historical in parallel ──
         await _emit(queue, step=4, step_name="Pulling satellite imagery", status_="running",
-                    message=f"Fetching Sentinel-2 true-color tile{approx_suffix}")
+                    message=f"Fetching Sentinel-2 current + 3yr historical tiles{approx_suffix}")
+        image_b64: str | None = None
+        image_historical_b64: str | None = None
         if coords_ok:
             try:
-                image_b64 = await sentinel_hub.get_satellite_image_b64(lat, lon)
+                results = await asyncio.gather(
+                    sentinel_hub.get_satellite_image_b64(lat, lon),
+                    sentinel_hub.get_historical_image_b64(lat, lon, years_ago=3),
+                    return_exceptions=True,
+                )
+                cur, hist = results
+                image_b64 = cur if isinstance(cur, str) else None
+                image_historical_b64 = hist if isinstance(hist, str) else None
+                if isinstance(cur, Exception):
+                    logger.warning("sentinel current image failed: %s", cur)
+                if isinstance(hist, Exception):
+                    logger.warning("sentinel historical image failed: %s", hist)
             except Exception as exc:  # noqa: BLE001
-                logger.warning("sentinel image failed: %s", exc)
-                image_b64 = None
-        else:
-            image_b64 = None
+                logger.warning("sentinel imagery batch failed: %s", exc)
         assembled["satellite_image_b64"] = image_b64
+        assembled["satellite_image_historical_b64"] = image_historical_b64
+        any_image = bool(image_b64 or image_historical_b64)
         await _emit(queue, step=4, step_name="Pulling satellite imagery", status_="complete",
-                    message=("Imagery acquired" if image_b64 else "Imagery unavailable") + approx_suffix,
+                    message=("Imagery acquired" if any_image else "Imagery unavailable") + approx_suffix,
                     data={"image_acquired": bool(image_b64),
+                          "historical_image_acquired": bool(image_historical_b64),
                           "size_bytes": len(image_b64) if image_b64 else 0,
-                          "approximate": approximate and bool(image_b64)})
+                          "approximate": approximate and any_image})
 
         # ── Step 5: NDVI ────────────────────────────────────────────────
         await _emit(queue, step=5, step_name="Analyzing vegetation index", status_="running",
