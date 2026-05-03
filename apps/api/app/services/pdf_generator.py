@@ -2186,6 +2186,383 @@ body.preview .page-cover .cover-ring svg {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   BRAND PARITY — worldmonitor / veritasoracle.vercel.app landing
+   ────────────────────────────────────────────────────────────────────
+   Lifted directly from public/landing.html so the preview reads as the
+   same product. The PDF path (render_pdf_bytes / _CSS) keeps its
+   print-friendly Playfair Display + IBM Plex stack untouched; these
+   overrides only cascade onto body.preview elements in the browser
+   viewer. Specificity escalations use !important because they have to
+   beat the inline-styled rules emitted by the page builders.
+   ════════════════════════════════════════════════════════════════════ */
+
+body.preview {
+  /* Brand tokens scoped to the preview surface. */
+  --vt-bg:           #060a07;
+  --vt-bg-elev:      #0a100c;
+  --vt-ink:          #f5f0eb;
+  --vt-ink-soft:     rgba(245, 240, 235, 0.65);
+  --vt-ink-mute:     rgba(245, 240, 235, 0.42);
+  --vt-ink-faint:    rgba(245, 240, 235, 0.22);
+  --vt-gold:         #c8860a;
+  --vt-gold-soft:    #d4943a;
+  --vt-gold-bright:  #f5b541;
+  --vt-gold-glow:    rgba(200, 134, 10, 0.18);
+  --vt-emerald:      #4ade80;
+  --vt-crimson:      #f87171;
+  --vt-line:         rgba(245, 240, 235, 0.10);
+  --vt-line-soft:    rgba(245, 240, 235, 0.06);
+  --vt-glass-bg:     rgba(255, 255, 255, 0.025);
+  --vt-glass-bg-strong: rgba(255, 255, 255, 0.022);
+  --serif:           'Instrument Serif', 'Times New Roman', serif;
+  --sans:            'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono:            'JetBrains Mono', 'SFMono-Regular', Menlo, monospace;
+  --ease-out:        cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  background-color: var(--vt-bg) !important;
+  color: var(--vt-ink) !important;
+  font-family: var(--sans) !important;
+  font-weight: 300;
+  letter-spacing: 0.005em;
+}
+
+/* Aurora + grid backdrop straight from landing.html */
+body.preview {
+  background-image:
+    radial-gradient(ellipse 60% 38% at 50% -8%, rgba(200, 134, 10, 0.20), transparent 65%),
+    radial-gradient(ellipse 70% 40% at 100% 100%, rgba(74, 222, 128, 0.08), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 0% 100%, rgba(200, 134, 10, 0.06), transparent 60%) !important;
+  background-attachment: fixed !important;
+}
+body.preview::before {
+  background-image:
+    linear-gradient(rgba(245, 240, 235, 0.020) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 240, 235, 0.020) 1px, transparent 1px) !important;
+  background-size: 64px 64px !important;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000, transparent 80%) !important;
+          mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000, transparent 80%) !important;
+  animation: vt-aurora 22s ease-in-out infinite alternate;
+}
+@keyframes vt-aurora {
+  0%   { transform: translate3d(-1.5%, -0.8%, 0) scale(1.015); }
+  100% { transform: translate3d(1.5%, 0.8%, 0) scale(1); }
+}
+
+/* ── Type ──────────────────────────────────────────────────────── */
+/* Display: Instrument Serif italic for hero-class headings */
+body.preview h1,
+body.preview h2,
+body.preview .cover-project,
+body.preview .page-title,
+body.preview .rec-value,
+body.preview .final-rec,
+body.preview .veg-pct,
+body.preview .veg-arrow,
+body.preview .stat-v,
+body.preview .cv-lg,
+body.preview .wordmark {
+  font-family: var(--serif) !important;
+  font-style: italic !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--vt-ink);
+}
+/* h3 sub-headings stay non-italic Instrument Serif */
+body.preview h3:not(.sub-h):not(.cmp-label) {
+  font-family: var(--serif) !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+}
+
+/* Mono: every label, code, eyebrow, table cell, nav, badge */
+body.preview code, body.preview .mono,
+body.preview .eyebrow,
+body.preview .ck, body.preview .cv,
+body.preview .sub-h,
+body.preview .stat-k,
+body.preview .approx-pill,
+body.preview .source-note,
+body.preview .meta-table, body.preview .meta-table td,
+body.preview .kv-table,  body.preview .kv-table td,
+body.preview .src-table, body.preview .src-table td, body.preview .src-table th,
+body.preview .model-table, body.preview .model-table td,
+body.preview .reason-list, body.preview .reason-list li,
+body.preview .flag-list, body.preview .flag-item,
+body.preview .pos-list, body.preview .pos-item,
+body.preview .vt-counter,
+body.preview .vt-nav button,
+body.preview .vt-lb-btn,
+body.preview .vt-lb-close,
+body.preview .cmp-head, body.preview .cmp-label, body.preview .cmp-value,
+body.preview .cmp-of,   body.preview .cmp-weight,
+body.preview .risk-pill, body.preview .risk-pill-lg,
+body.preview .trend-pill,
+body.preview .fire-verdict,
+body.preview .confidential, body.preview .cover-foot, body.preview .page-foot,
+body.preview .veg-pct-sub, body.preview .veg-status,
+body.preview .brand-tag,   body.preview .disc-label,
+body.preview .link-code,
+body.preview .rec-label,
+body.preview .rec-text,
+body.preview .prose-muted,
+body.preview .wordmark-sub,
+body.preview .stat-v-sm {
+  font-family: var(--mono) !important;
+  font-feature-settings: 'tnum' on, 'lnum' on;
+}
+
+/* Body prose stays Barlow (sans), readability-tuned */
+body.preview .prose,
+body.preview .disclaimer p,
+body.preview .veg-callout {
+  font-family: var(--sans) !important;
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--vt-ink-soft);
+}
+
+/* Wordmark dot — gold */
+body.preview .wordmark { color: var(--vt-ink) !important; }
+body.preview .wordmark-sub {
+  color: var(--vt-ink-soft) !important;
+  letter-spacing: 0.4em !important;
+}
+
+/* Eyebrows / labels / source notes — gold mono-tag */
+body.preview .eyebrow,
+body.preview .sub-h,
+body.preview .ck,
+body.preview .stat-k,
+body.preview .panel-eyebrow,
+body.preview .brand-mark,
+body.preview .rec-label,
+body.preview .disc-label {
+  color: var(--vt-gold) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.22em !important;
+}
+
+/* ── Glass primitive — exact rim highlight from landing.html ──── */
+body.preview .stat-block,
+body.preview .rec-box,
+body.preview .veg-callout,
+body.preview .sat-tile,
+body.preview .vt-nav,
+body.preview .vt-lb-controls,
+body.preview .vt-lb-close,
+body.preview img.fire-map,
+body.preview .fire-map-empty {
+  background: var(--vt-glass-bg) !important;
+  border: none !important;
+  border-radius: 16px !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.08),
+    0 4px 30px rgba(0, 0, 0, 0.25) !important;
+  position: relative;
+  overflow: hidden;
+}
+body.preview .stat-block::before,
+body.preview .rec-box::before,
+body.preview .veg-callout::before,
+body.preview .sat-tile::before,
+body.preview .vt-nav::before,
+body.preview .vt-lb-controls::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.2px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.40) 0%,
+    rgba(255, 255, 255, 0.10) 22%,
+    rgba(255, 255, 255, 0)    45%,
+    rgba(255, 255, 255, 0)    55%,
+    rgba(255, 255, 255, 0.10) 78%,
+    rgba(255, 255, 255, 0.40) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+}
+body.preview .stat-block > *,
+body.preview .rec-box > *,
+body.preview .veg-callout > *,
+body.preview .sat-tile > * { position: relative; z-index: 1; }
+
+/* Pill-rounded borders for round elements */
+body.preview .vt-nav { border-radius: 999px !important; }
+body.preview .vt-lb-controls { border-radius: 999px !important; }
+body.preview .approx-pill,
+body.preview .risk-pill,
+body.preview .risk-pill-lg,
+body.preview .trend-pill,
+body.preview .fire-verdict {
+  border-radius: 999px !important;
+}
+
+/* Stronger glass for cover ring + final recommendation backdrop */
+body.preview .cover-ring svg {
+  filter: drop-shadow(0 0 32px rgba(200, 134, 10, 0.22));
+}
+
+/* ── Buttons / nav — landing-style pill ──────────────────────── */
+body.preview .vt-nav button {
+  border: 1px solid rgba(200, 134, 10, 0.32) !important;
+  color: var(--vt-gold) !important;
+  background: transparent !important;
+  font-size: 14px !important;
+}
+body.preview .vt-nav button:hover:not(:disabled) {
+  background: rgba(200, 134, 10, 0.14) !important;
+  color: var(--vt-gold-bright) !important;
+  border-color: var(--vt-gold) !important;
+  box-shadow: 0 4px 16px rgba(200, 134, 10, 0.28);
+}
+body.preview .vt-counter { color: var(--vt-ink-soft) !important; letter-spacing: 0.22em !important; }
+
+body.preview .vt-lb-btn {
+  border-color: rgba(200, 134, 10, 0.32) !important;
+  color: var(--vt-gold) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+body.preview .vt-lb-btn:hover {
+  background: rgba(200, 134, 10, 0.18) !important;
+  color: var(--vt-gold-bright) !important;
+}
+
+/* ── Recommendation — gold gradient text on final slide ──────── */
+body.preview .final-rec {
+  background: linear-gradient(180deg, var(--vt-gold-bright) 0%, var(--vt-gold) 90%) !important;
+  -webkit-background-clip: text !important;
+          background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  border-color: rgba(200, 134, 10, 0.30) !important;
+}
+
+/* Cover risk pill — gold treatment, rounded */
+body.preview .risk-pill,
+body.preview .risk-pill-lg {
+  background: var(--vt-ink) !important;
+  color: #0a0501 !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.22em !important;
+}
+
+/* Trend pill / fire verdict — gold-on-dark instead of solid colour fill */
+body.preview .trend-pill {
+  background: rgba(200, 134, 10, 0.06) !important;
+  color: var(--vt-gold-bright) !important;
+  border: 1px solid rgba(200, 134, 10, 0.30) !important;
+}
+
+body.preview .fire-verdict {
+  background: var(--vt-glass-bg) !important;
+  border: 1px solid rgba(200, 134, 10, 0.22) !important;
+  backdrop-filter: blur(14px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
+}
+
+/* Approximate-data tag — soft gold instead of amber */
+body.preview .approx-pill {
+  background: rgba(200, 134, 10, 0.08) !important;
+  color: var(--vt-gold-bright) !important;
+  border: 1px solid rgba(200, 134, 10, 0.40) !important;
+  letter-spacing: 0.22em !important;
+}
+
+/* ── Source notes — gold left rim ─────────────────────────────── */
+body.preview .source-note {
+  border-left: 2px solid var(--vt-gold) !important;
+  background: rgba(200, 134, 10, 0.04) !important;
+  color: var(--vt-ink-mute) !important;
+  border-radius: 0 6px 6px 0 !important;
+}
+
+/* ── Bars / charts — emerald positives, crimson negatives ─────── */
+body.preview .cmp-fill {
+  /* keep the inline-style colour, just round the corners */
+  border-radius: 999px !important;
+}
+
+/* Score-bar/cmp track — softer rail */
+body.preview .cmp-track {
+  background: rgba(245, 240, 235, 0.06) !important;
+  border-radius: 999px !important;
+}
+
+/* Progress rail — landing-style faded gold gradient */
+body.preview .vt-progress-fill {
+  background: linear-gradient(90deg, transparent, var(--vt-gold) 30%, var(--vt-gold-bright) 70%, transparent) !important;
+}
+
+/* ── KV / data tables — refined separator + mono ──────────────── */
+body.preview .kv-table td,
+body.preview .meta-table td,
+body.preview .src-table td {
+  border-bottom: 1px solid var(--vt-line-soft) !important;
+  font-size: 9.5pt;
+}
+body.preview .kv-k,
+body.preview .meta-table td:first-child {
+  color: var(--vt-ink-mute) !important;
+}
+body.preview .src-table th { color: var(--vt-gold) !important; }
+
+/* ── Flag/pos lists — left-rim accent with brand colors ───────── */
+body.preview .flag-item {
+  background: rgba(212, 148, 58, 0.08) !important;
+  border-left: 2px solid var(--vt-gold-soft) !important;
+}
+body.preview .pos-item {
+  background: rgba(74, 222, 128, 0.08) !important;
+  border-left: 2px solid var(--vt-emerald) !important;
+}
+body.preview .flag-icon { color: var(--vt-gold-soft) !important; }
+body.preview .pos-icon  { color: var(--vt-emerald) !important; }
+
+/* ── Cover page polish — wordmark + meta grid ─────────────────── */
+body.preview .page-cover .wordmark {
+  font-size: 38pt !important;
+  background: linear-gradient(180deg, var(--vt-gold-bright) 0%, var(--vt-gold) 90%) !important;
+  -webkit-background-clip: text !important;
+          background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  font-style: italic !important;
+}
+body.preview .page-cover .confidential { color: var(--vt-ink-mute) !important; }
+body.preview .page-cover .cover-foot {
+  color: var(--vt-gold) !important;
+  border-top-color: rgba(200, 134, 10, 0.25) !important;
+}
+
+/* ── Page heads — soft gold underline + larger eyebrow ────────── */
+body.preview .page-head {
+  border-bottom: 1px solid rgba(200, 134, 10, 0.20) !important;
+}
+
+/* ── Disclaimer panel ──────────────────────────────────────────── */
+body.preview .disclaimer {
+  background: rgba(255, 255, 255, 0.018) !important;
+  border-left: 2px solid var(--vt-gold) !important;
+  border-radius: 0 14px 14px 0 !important;
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+body.preview .disclaimer p { color: var(--vt-ink-soft) !important; }
+
+/* Brand mark on final slide */
+body.preview .brand-mark-lg {
+  font-family: var(--serif) !important;
+  font-style: italic !important;
+  background: linear-gradient(180deg, var(--vt-gold-bright) 0%, var(--vt-gold) 90%) !important;
+  -webkit-background-clip: text !important;
+          background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
 """
 
 
@@ -2381,16 +2758,23 @@ def _build_preview_html(payload: dict[str, Any]) -> str:
         return match.group(0)[:-1] + f' data-slide="{counter[0]}">'
     slides_html = re.sub(r'<section class="page[^"]*">', _mark, pages_raw)
 
+    # Brand fonts come from the worldmonitor landing page —
+    # Instrument Serif (italic for h1/h2) + Barlow body + JetBrains Mono
+    # data. The PDF path keeps its own print-friendly stack via _CSS;
+    # this preview-only override layer pulls in the brand fonts so the
+    # browser viewer matches veritasoracle.vercel.app exactly.
     head = (
         "<!doctype html>"
         "<html lang=\"en\"><head>"
         "<meta charset=\"utf-8\"/>"
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>"
         f"<title>VERITAS audit · {_esc(serial_label)}</title>"
+        "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\"/>"
+        "<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin/>"
         "<link href=\"https://fonts.googleapis.com/css2?"
-        "family=Playfair+Display:wght@500;600;700&"
-        "family=IBM+Plex+Sans:wght@300;400;500&"
-        "family=IBM+Plex+Mono:wght@400;500&display=swap\" rel=\"stylesheet\"/>"
+        "family=Instrument+Serif:ital@0;1&"
+        "family=Barlow:wght@200;300;400;500;600;700&"
+        "family=JetBrains+Mono:wght@300;400;500&display=swap\" rel=\"stylesheet\"/>"
         f"<style>{_CSS}{_PREVIEW_CSS}</style>"
         "</head>"
     )
