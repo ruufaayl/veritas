@@ -7,6 +7,11 @@ venv/
 .env
 .pytest_cache/
 
+# Local data (caches, sqlite, generated)
+apps/api/data/
+*.sqlite
+*.db
+
 # Node
 node_modules/
 dist/
