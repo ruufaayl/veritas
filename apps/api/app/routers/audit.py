@@ -28,6 +28,8 @@ from sqlalchemy import desc, select
 
 from app.core.database import AsyncSessionLocal
 from app.models.audit import Audit
+import httpx
+
 from app.services import (
     claude_narrative,
     global_forest_watch,
@@ -37,6 +39,10 @@ from app.services import (
     registry_scraper,
     sentinel_hub,
 )
+# Re-use the scraper's Nominatim helper so we have one country-geocode
+# implementation, not two. (Acceptable use of an underscore-prefixed
+# binding — registry_scraper.py is owned by us and stable.)
+from app.services.registry_scraper import _geocode_country
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/audit", tags=["audit"])
@@ -181,36 +187,73 @@ async def _run_pipeline(audit_id: str, serial: str, queue: asyncio.Queue) -> Non
 
         # ── Step 2: Coordinate verification ─────────────────────────────
         lat, lon = project.get("lat"), project.get("lon")
-        coords_ok = isinstance(lat, (int, float)) and isinstance(lon, (int, float))
+        country = project.get("country")
+        approximate = bool(project.get("coordinates_approximate"))
+
         await _emit(queue, step=2, step_name="Verifying coordinates", status_="running",
                     message="Validating project geocoordinates")
+
+        # If the registry didn't yield coords but did give us a country,
+        # geocode it ourselves. The scraper already tries this, but this
+        # is a defensive second pass — and it keeps the policy in one
+        # place even when the project comes from the SQLite cache or a
+        # future registry adapter that doesn't geocode.
+        if (not isinstance(lat, (int, float)) or not isinstance(lon, (int, float))) and country:
+            try:
+                async with httpx.AsyncClient(
+                    timeout=15.0, follow_redirects=True,
+                    headers={"User-Agent": "VeritasOracle/1.0"},
+                ) as client:
+                    g_lat, g_lon = await _geocode_country(client, country)
+                if isinstance(g_lat, float) and isinstance(g_lon, float):
+                    lat, lon = g_lat, g_lon
+                    approximate = True
+                    project["lat"], project["lon"] = lat, lon
+                    project["coordinates_approximate"] = True
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("step 2 country-geocode failed: %s", exc)
+
+        coords_ok = isinstance(lat, (int, float)) and isinstance(lon, (int, float))
         if coords_ok:
+            label = "approximate (country centroid)" if approximate else "exact (project polygon)"
             await _emit(queue, step=2, step_name="Verifying coordinates", status_="complete",
-                        message=f"Coordinates: {lat:.4f}, {lon:.4f} "
-                                f"({'approximate' if project.get('coordinates_approximate') else 'exact'})",
-                        data={"lat": lat, "lon": lon,
-                              "approximate": project.get("coordinates_approximate", False)})
+                        message=f"Coordinates: {lat:.4f}, {lon:.4f} — {label}",
+                        data={"lat": lat, "lon": lon, "approximate": approximate,
+                              "country": country})
         else:
+            # No registry coords AND no country to fall back on — only
+            # then do we skip geo-services. The user instruction was:
+            # don't skip on missing coords, geocode the country first.
             await _emit(queue, step=2, step_name="Verifying coordinates", status_="complete",
-                        message="No coordinates available — geo-services will be skipped",
-                        data={"lat": None, "lon": None, "skipped_downstream": True})
+                        message=("No coordinates and no country in registry response — "
+                                 "geo-services will be skipped"),
+                        data={"lat": None, "lon": None, "skipped_downstream": True,
+                              "country": None})
+
+        # All four geo-services share the same approximate-coords envelope:
+        # if `approximate=True`, the lat/lon are a country centroid and the
+        # service result is regional, not project-specific. Mark every
+        # result with `approximate: <bool>` so the UI can label it.
+        approx_suffix = " (regional, country centroid)" if approximate else ""
 
         # ── Step 3: NASA FIRMS ──────────────────────────────────────────
         await _emit(queue, step=3, step_name="Scanning NASA fire data", status_="running",
-                    message="Querying VIIRS + MODIS hotspots")
+                    message=f"Querying VIIRS + MODIS hotspots{approx_suffix}")
         if coords_ok:
             fire_data = await nasa_firms.get_fire_alerts(lat, lon)
         else:
-            fire_data = {"error": "skipped: no coordinates", "hotspot_count": 0}
+            fire_data = {"error": "skipped: no coordinates and no country",
+                         "hotspot_count": 0}
+        fire_data["approximate"] = approximate and coords_ok
         assembled["fire_data"] = fire_data
         await _emit(queue, step=3, step_name="Scanning NASA fire data", status_="complete",
                     message=(f"{fire_data.get('hotspot_count', 0)} hotspots "
-                             f"(nearest {fire_data.get('nearest_fire_km')} km)"),
+                             f"(nearest {fire_data.get('nearest_fire_km')} km){approx_suffix}"),
                     data=fire_data)
 
         # ── Step 4: Sentinel image ──────────────────────────────────────
         await _emit(queue, step=4, step_name="Pulling satellite imagery", status_="running",
-                    message="Fetching Sentinel-2 true-color tile")
+                    message=f"Fetching Sentinel-2 true-color tile{approx_suffix}")
         if coords_ok:
             try:
                 image_b64 = await sentinel_hub.get_satellite_image_b64(lat, lon)
@@ -221,34 +264,39 @@ async def _run_pipeline(audit_id: str, serial: str, queue: asyncio.Queue) -> Non
             image_b64 = None
         assembled["satellite_image_b64"] = image_b64
         await _emit(queue, step=4, step_name="Pulling satellite imagery", status_="complete",
-                    message="Imagery acquired" if image_b64 else "Imagery unavailable",
+                    message=("Imagery acquired" if image_b64 else "Imagery unavailable") + approx_suffix,
                     data={"image_acquired": bool(image_b64),
-                          "size_bytes": len(image_b64) if image_b64 else 0})
+                          "size_bytes": len(image_b64) if image_b64 else 0,
+                          "approximate": approximate and bool(image_b64)})
 
         # ── Step 5: NDVI ────────────────────────────────────────────────
         await _emit(queue, step=5, step_name="Analyzing vegetation index", status_="running",
-                    message="Computing 3-window NDVI delta")
+                    message=f"Computing 3-window NDVI delta{approx_suffix}")
         if coords_ok:
             vegetation_data = await sentinel_hub.get_ndvi_timeseries(lat, lon)
         else:
-            vegetation_data = {"error": "skipped: no coordinates", "health_status": "UNKNOWN"}
+            vegetation_data = {"error": "skipped: no coordinates and no country",
+                               "health_status": "UNKNOWN"}
+        vegetation_data["approximate"] = approximate and coords_ok
         assembled["vegetation_data"] = vegetation_data
         await _emit(queue, step=5, step_name="Analyzing vegetation index", status_="complete",
                     message=(f"NDVI {vegetation_data.get('current_ndvi')} "
-                             f"({vegetation_data.get('health_status')})"),
+                             f"({vegetation_data.get('health_status')}){approx_suffix}"),
                     data=vegetation_data)
 
         # ── Step 6: Forest cover ────────────────────────────────────────
         await _emit(queue, step=6, step_name="Checking forest cover", status_="running",
-                    message="Querying Global Forest Watch tree-cover-loss")
+                    message=f"Querying Global Forest Watch tree-cover-loss{approx_suffix}")
         if coords_ok:
             forest_data = await global_forest_watch.get_forest_loss(lat, lon)
         else:
-            forest_data = {"error": "skipped: no coordinates", "trend": "STABLE"}
+            forest_data = {"error": "skipped: no coordinates and no country",
+                           "trend": "STABLE"}
+        forest_data["approximate"] = approximate and coords_ok
         assembled["forest_data"] = forest_data
         await _emit(queue, step=6, step_name="Checking forest cover", status_="complete",
                     message=(f"5-yr loss {forest_data.get('total_loss_5yr_ha')} ha "
-                             f"({forest_data.get('trend')})"),
+                             f"({forest_data.get('trend')}){approx_suffix}"),
                     data=forest_data)
 
         # ── (silent) NOAA climate ──────────────────────────────────────
@@ -257,7 +305,9 @@ async def _run_pipeline(audit_id: str, serial: str, queue: asyncio.Queue) -> Non
         if coords_ok:
             climate_data = await noaa_climate.get_climate_data(lat, lon)
         else:
-            climate_data = {"error": "skipped: no coordinates", "climate_risk_level": "LOW"}
+            climate_data = {"error": "skipped: no coordinates and no country",
+                            "climate_risk_level": "LOW"}
+        climate_data["approximate"] = approximate and coords_ok
         assembled["climate_data"] = climate_data
 
         # ── Step 7: Groq risk score ─────────────────────────────────────
