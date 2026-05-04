@@ -2563,6 +2563,206 @@ body.preview .brand-mark-lg {
           background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE — fluid type, grid collapse, touch-friendly chrome
+   ────────────────────────────────────────────────────────────────────
+   Three breakpoints: 1100px (tablet) → 720px (mobile) → 480px (small).
+   Plus a (pointer: coarse) escalation that bumps tap targets to ≥44px
+   regardless of viewport width. iOS notch / home-indicator handled
+   via env(safe-area-inset-*).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Allow native vertical scroll of overflowing slides while we intercept
+   horizontal swipes in JS. */
+body.preview { touch-action: pan-y; }
+body.preview .page { -webkit-overflow-scrolling: touch; }
+
+/* Fluid display sizes — replace fixed pt with clamp() so headings
+   scale smoothly between phone (≈22pt) and desktop (≈32pt). The
+   formula is `clamp(min, base + Xvw, max)` — base in pt, X in vw. */
+body.preview .page-title    { font-size: clamp(18pt, 3vw + 8pt, 28pt) !important; line-height: 1.1; }
+body.preview .cover-project { font-size: clamp(22pt, 3vw + 12pt, 32pt) !important; line-height: 1.05; }
+body.preview .rec-value     { font-size: clamp(18pt, 2.5vw + 8pt, 24pt) !important; }
+body.preview .stat-v        { font-size: clamp(15pt, 2vw + 6pt, 22pt) !important; line-height: 1; }
+body.preview .veg-pct,
+body.preview .veg-arrow     { font-size: clamp(22pt, 3vw + 10pt, 32pt) !important; }
+body.preview .cv-lg         { font-size: clamp(15pt, 2vw + 6pt, 22pt) !important; }
+body.preview .final-rec     { font-size: clamp(36pt, 8vw + 6pt, 64pt) !important; line-height: 1; }
+
+/* Cover wordmark scales too (was fixed 38pt) */
+body.preview .page-cover .wordmark { font-size: clamp(24pt, 3.5vw + 12pt, 38pt) !important; }
+
+/* SVGs declare viewBox already — let CSS resize them to fit. */
+body.preview .cover-ring,
+body.preview .cover-ring svg,
+body.preview .chart-wrap,
+body.preview .chart-wrap svg,
+body.preview .cmp-radar,
+body.preview .cmp-radar svg {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+body.preview .cover-ring svg { width: min(340px, 60vw) !important; margin: 0 auto; }
+body.preview .cmp-radar svg  { width: min(360px, 80vw) !important; margin: 0 auto; }
+body.preview .chart-wrap svg { width: 100% !important; max-width: 640px; margin: 0 auto; }
+body.preview .chart-wrap-center { justify-content: center; }
+body.preview .chart-wrap-center svg { width: min(540px, 92vw) !important; }
+
+/* Source-note long-text on narrow screens */
+body.preview .source-note,
+body.preview .prose,
+body.preview .prose-muted,
+body.preview .disclaimer p { word-break: break-word; overflow-wrap: anywhere; }
+
+/* Code links break onto multiple lines instead of overflowing */
+body.preview .link-code { word-break: break-all; }
+
+/* ── Tablet (≤1100px) ────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  body.preview .page { padding: 6vh 32px 14vh !important; }
+
+  /* Side-by-side panels collapse */
+  body.preview .fire-row,
+  body.preview .cmp-grid { grid-template-columns: 1fr !important; gap: 16pt !important; }
+  body.preview .cmp-radar { margin-top: 14pt; justify-self: center; }
+
+  /* Cover meta from 3 cols → 2 */
+  body.preview .cover-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Risk-row on slide-7 (page 9 in PDF) — radar to bottom */
+  body.preview .risk-row,
+  body.preview .vr-risk-row { grid-template-columns: 1fr !important; justify-items: center; }
+}
+
+/* ── Mobile (≤720px) ─────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  body.preview .page {
+    padding: 4.5vh 18px 14vh !important;
+  }
+
+  /* Almost everything stacks */
+  body.preview .two-col,
+  body.preview .three-col,
+  body.preview .sat-grid,
+  body.preview .cover-grid,
+  body.preview .es-row,
+  body.preview .veg-callout,
+  body.preview .final-meta {
+    grid-template-columns: 1fr !important;
+    display: grid !important;
+    gap: 10pt !important;
+  }
+  body.preview .veg-callout { display: flex !important; flex-direction: column !important; align-items: flex-start; }
+  body.preview .veg-status  { align-items: flex-start !important; }
+
+  /* fire-stats was 2x2 — keep 2 cols (looks fine), tighten gap */
+  body.preview .fire-stats { gap: 3mm !important; }
+
+  /* Tighten card padding */
+  body.preview .stat-block,
+  body.preview .rec-box,
+  body.preview .veg-callout,
+  body.preview .sat-tile {
+    padding: 10pt 12pt !important;
+    border-radius: 12px !important;
+  }
+
+  /* Tables — mono down a notch so 6-column src-table fits */
+  body.preview .src-table  { font-size: 7.5pt !important; }
+  body.preview .src-table th,
+  body.preview .src-table td { padding: 4pt 4pt 4pt 0 !important; }
+  body.preview .kv-table   { font-size: 9pt !important; }
+  body.preview .meta-table { font-size: 9pt !important; }
+
+  /* Stat blocks — smaller eyebrows + values */
+  body.preview .stat-k { font-size: 7.5pt !important; letter-spacing: 0.16em !important; }
+
+  /* Fire verdict full-width pill */
+  body.preview .fire-verdict { font-size: 9.5pt !important; padding: 7pt 12pt !important; }
+
+  /* Hide the radar on mobile — the bars carry the same data */
+  body.preview .cmp-radar { display: none !important; }
+}
+
+/* ── Small mobile (≤480px) ───────────────────────────────────────── */
+@media (max-width: 480px) {
+  body.preview .page { padding: 4vh 14px 14vh !important; }
+
+  body.preview .page-cover { padding: 4vh 14px 18vh !important; }
+  body.preview .cover-meta { margin-top: 4mm !important; }
+  body.preview .cover-grid { gap: 8pt 14pt !important; }
+
+  body.preview .stat-block { padding: 9pt 10pt !important; }
+  body.preview .source-note { font-size: 8pt !important; padding: 4pt 8pt !important; }
+
+  /* Fire-stats — drop to 1 col on smallest screens */
+  body.preview .fire-stats { grid-template-columns: 1fr !important; gap: 3mm !important; }
+
+  /* Final slide tightens */
+  body.preview .final-rec { padding: 10pt 0 !important; margin: 6mm 0 !important; }
+  body.preview .disclaimer { padding: 9pt 11pt !important; }
+  body.preview .disclaimer p { font-size: 9pt !important; }
+}
+
+/* ── Short-landscape phones (e.g. iPhone in landscape) ─────────────
+   When height is very small, drop top/bottom padding so cards fit. */
+@media (orientation: landscape) and (max-height: 600px) {
+  body.preview .page { padding: 3vh 24px 11vh !important; }
+  body.preview .page-cover { padding: 3vh 24px 11vh !important; }
+  body.preview .cover-ring svg { width: min(220px, 30vh) !important; }
+}
+
+/* ── Touch-device tap targets (≥44px Apple HIG / 48px Material) ──── */
+@media (pointer: coarse) {
+  .vt-nav button { min-width: 44px !important; min-height: 44px !important; font-size: 17px !important; }
+  .vt-lb-btn     { min-width: 44px !important; min-height: 44px !important; }
+  .vt-lb-close   { width: 48px !important; height: 48px !important; font-size: 26px !important; }
+}
+
+/* ── Nav with iOS safe-area support ─────────────────────────────── */
+.vt-nav {
+  bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 16px)) !important;
+}
+.vt-progress-rail { bottom: env(safe-area-inset-bottom, 0px); }
+
+@media (max-width: 720px) {
+  .vt-nav {
+    bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 10px)) !important;
+    width: calc(100% - 24px) !important;
+    max-width: 380px;
+    justify-content: space-between !important;
+    padding: 6px 10px !important;
+  }
+  .vt-counter { min-width: auto !important; font-size: 11px !important; letter-spacing: 0.18em !important; }
+}
+
+/* ── Lightbox responsive ────────────────────────────────────────── */
+@media (max-width: 720px) {
+  .vt-lightbox img {
+    max-width: 96vw !important;
+    max-height: 76vh !important;
+    border-radius: 4px;
+  }
+  .vt-lb-close {
+    top: max(16px, env(safe-area-inset-top, 0px) + 8px);
+    right: 16px;
+  }
+  .vt-lb-controls {
+    bottom: max(20px, env(safe-area-inset-bottom, 0px) + 14px);
+    padding: 6px 10px !important;
+    gap: 8px !important;
+  }
+}
+
+/* ── A11y: hidden focus-visible ring for keyboard users ──────────── */
+body.preview .vt-nav button:focus-visible,
+body.preview .vt-lb-btn:focus-visible,
+body.preview .vt-lb-close:focus-visible {
+  outline: 2px solid var(--vt-gold-bright) !important;
+  outline-offset: 2px !important;
+}
 """
 
 
@@ -2716,6 +2916,58 @@ _PREVIEW_JS = r"""
       img.addEventListener('click', function () { openLb(img.src); });
     }
   );
+
+  // ── touch: swipe-left/right to navigate slides ────────────────
+  // Only register a swipe when:
+  //   • horizontal travel ≥ 60px
+  //   • horizontal-dominant (|dx| > 1.5×|dy|) so vertical scroll
+  //     within an overflowing slide still works naturally
+  //   • gesture finished within 600ms (rules out slow drags)
+  //   • origin element isn't inside the lightbox or a button
+  var SWIPE_MIN = 60;
+  var SWIPE_MAX_MS = 600;
+  var touchStartX = 0, touchStartY = 0, touchStartT = 0, touchValid = false;
+
+  document.addEventListener('touchstart', function (e) {
+    if (lb.classList.contains('open')) return;
+    if (e.touches.length !== 1) { touchValid = false; return; }
+    var t = e.changedTouches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+    touchStartT = Date.now();
+    touchValid = true;
+  }, { passive: true });
+
+  document.addEventListener('touchend', function (e) {
+    if (!touchValid || lb.classList.contains('open')) return;
+    var t = e.changedTouches[0];
+    var dx = t.clientX - touchStartX;
+    var dy = t.clientY - touchStartY;
+    var dt = Date.now() - touchStartT;
+    touchValid = false;
+    if (
+      Math.abs(dx) >= SWIPE_MIN &&
+      Math.abs(dx) > Math.abs(dy) * 1.5 &&
+      dt < SWIPE_MAX_MS
+    ) {
+      if (dx < 0) show(idx + 1);
+      else show(idx - 1);
+    }
+  }, { passive: true });
+
+  // ── lightbox: swipe-down to close ────────────────────────────
+  var lbStartY = 0, lbActiveY = false;
+  lb.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) { lbActiveY = false; return; }
+    lbStartY = e.touches[0].clientY;
+    lbActiveY = true;
+  }, { passive: true });
+  lb.addEventListener('touchend', function (e) {
+    if (!lbActiveY) return;
+    var dy = e.changedTouches[0].clientY - lbStartY;
+    lbActiveY = false;
+    if (dy > 80) closeLb();
+  }, { passive: true });
 
   // Boot — show the cover slide
   show(0);
