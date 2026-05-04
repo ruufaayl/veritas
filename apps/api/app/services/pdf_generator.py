@@ -631,6 +631,17 @@ def _page_project_identity(payload: dict[str, Any]) -> str:
 
 
 def _satellite_image_block(image_b64: str | None, label: str, lat, lon) -> str:
+    """Render one satellite tile slot.
+
+    Resolution order, most → least authoritative:
+      1. Real Sentinel-2 base64 from the audit pipeline (10m true-color).
+      2. Mapbox satellite-v9 reference tile at the same coordinates.
+         Marked clearly as REFERENCE so users know this isn't the actual
+         Sentinel-2 archive — useful for previewing report quality and
+         when Sentinel Hub is offline / hadn't returned by audit time.
+      3. Coordinate text placeholder when there are no coordinates and
+         no Mapbox token.
+    """
     if image_b64:
         return f"""
         <div class="sat-tile">
@@ -638,6 +649,17 @@ def _satellite_image_block(image_b64: str | None, label: str, lat, lon) -> str:
           <div class="sat-caption">{_esc(label)}</div>
         </div>
         """
+
+    ref_url = _mapbox_url(lat, lon, zoom=11)
+    if ref_url:
+        return f"""
+        <div class="sat-tile sat-tile-reference">
+          <img src="{_esc(ref_url)}" alt="{_esc(label)} — Mapbox reference tile"/>
+          <span class="sat-ref-badge">REFERENCE · MAPBOX SATELLITE</span>
+          <div class="sat-caption">{_esc(label)}</div>
+        </div>
+        """
+
     coord_text = (
         f"{lat:.4f}, {lon:.4f}" if isinstance(lat, (int, float)) and isinstance(lon, (int, float))
         else "no coordinates"
@@ -2763,6 +2785,229 @@ body.preview .vt-lb-close:focus-visible {
   outline: 2px solid var(--vt-gold-bright) !important;
   outline-offset: 2px !important;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   POLISH PASS — right-rail nav, table glass, cover ring, zoom-out
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Nav floats on the right edge, vertically centred ───────────── */
+.vt-nav {
+  top: 50% !important;
+  right: 28px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: translateY(-50%) !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  padding: 12px 8px !important;
+  border-radius: 28px !important;
+}
+body.preview .vt-counter {
+  font-size: 10px !important;
+  letter-spacing: 0.18em !important;
+  min-width: 0 !important;
+  width: 44px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Mobile: revert nav to bottom-center horizontal pill (thumb reach) */
+@media (max-width: 720px) {
+  .vt-nav {
+    top: auto !important;
+    right: auto !important;
+    left: 50% !important;
+    bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 10px)) !important;
+    transform: translateX(-50%) !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    width: calc(100% - 24px) !important;
+    max-width: 380px;
+    border-radius: 999px !important;
+    padding: 6px 10px !important;
+    justify-content: space-between !important;
+  }
+  body.preview .vt-counter { width: auto; min-width: auto !important; font-size: 11px !important; }
+}
+
+/* ── Glass on data tables ───────────────────────────────────────── */
+body.preview .kv-table,
+body.preview .meta-table,
+body.preview .src-table,
+body.preview .model-table {
+  background: var(--vt-glass-bg) !important;
+  border: 1px solid var(--vt-glass-border) !important;
+  border-radius: 14px !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  overflow: hidden !important;
+  backdrop-filter: blur(14px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.08),
+    0 4px 20px rgba(0, 0, 0, 0.18) !important;
+}
+body.preview .kv-table tr td:first-child,
+body.preview .meta-table tr td:first-child,
+body.preview .src-table tr td:first-child,
+body.preview .src-table tr th:first-child,
+body.preview .model-table tr td:first-child { padding-left: 16pt !important; }
+body.preview .kv-table tr td:last-child,
+body.preview .meta-table tr td:last-child,
+body.preview .src-table tr td:last-child,
+body.preview .src-table tr th:last-child,
+body.preview .model-table tr td:last-child { padding-right: 16pt !important; }
+body.preview .kv-table tr:first-child td,
+body.preview .meta-table tr:first-child td,
+body.preview .src-table thead th,
+body.preview .model-table tr:first-child td { padding-top: 12pt !important; }
+body.preview .kv-table tr:last-child td,
+body.preview .meta-table tr:last-child td,
+body.preview .src-table tbody tr:last-child td,
+body.preview .model-table tr:last-child td {
+  padding-bottom: 12pt !important;
+  border-bottom: none !important;
+}
+
+/* link-code (registry URL) — full glass card */
+body.preview .link-code {
+  background: var(--vt-glass-bg) !important;
+  border: 1px solid var(--vt-glass-border) !important;
+  border-left: 2px solid var(--vt-gold) !important;
+  border-radius: 10px !important;
+  padding: 10pt 14pt !important;
+  backdrop-filter: blur(14px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Disclaimer (final slide) — true glass, drop the solid grey */
+body.preview .disclaimer {
+  background: var(--vt-glass-bg) !important;
+  border: 1px solid var(--vt-glass-border) !important;
+  border-left: 2px solid rgba(245, 240, 235, 0.4) !important;
+  border-radius: 14px !important;
+  backdrop-filter: blur(14px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ── Cover score number — refined typographic treatment ────────── */
+/* SVG <text> font-family is set via inline attribute on the score
+   ring; CSS overrides the rendered font without changing PDF output
+   (PDF body class isn't `preview`). Make the score authoritative,
+   not whimsical: Instrument Serif at the regular weight reads as
+   confident editorial display type, with tabular numerals so a 99 →
+   100 transition doesn't shift width during the count-up. */
+body.preview .cover-ring svg text:first-of-type {
+  font-family: var(--serif) !important;
+  font-style: normal !important;
+  font-weight: 400 !important;
+  font-variant-numeric: tabular-nums lining-nums !important;
+  font-feature-settings: 'tnum' on, 'lnum' on, 'ss01' on !important;
+  letter-spacing: -0.04em !important;
+}
+body.preview .cover-ring svg text:not(:first-of-type) {
+  font-family: var(--mono) !important;
+  letter-spacing: 0.22em !important;
+}
+
+/* Interactive cover ring — hover lifts + glows; click replays count */
+body.preview .cover-ring {
+  cursor: pointer;
+  display: inline-block;
+  transition: transform 0.45s var(--ease-spring), filter 0.4s var(--ease-out);
+  filter: drop-shadow(0 0 28px rgba(200, 134, 10, 0.20));
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+body.preview .cover-ring:hover {
+  transform: scale(1.025);
+  filter: drop-shadow(0 0 44px rgba(200, 134, 10, 0.40));
+}
+body.preview .cover-ring:active {
+  transform: scale(0.99);
+  transition-duration: 80ms;
+}
+@media (hover: none) {
+  body.preview .cover-ring:hover { transform: none; }
+}
+
+/* Tiny "click to replay" hint, fades after first interaction */
+body.preview .cover-ring::after {
+  content: 'tap to replay';
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--vt-ink-mute);
+  pointer-events: none;
+  opacity: 0;
+  animation: vt-hint-fade 4s 1.8s ease-out forwards;
+}
+body.preview .cover-ring.replayed::after { animation: none; opacity: 0; }
+@keyframes vt-hint-fade {
+  0%   { opacity: 0; }
+  20%  { opacity: 0.7; }
+  80%  { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+/* ── Reference satellite tile (Mapbox fallback) ─────────────────── */
+body.preview .sat-tile-reference {
+  position: relative;
+}
+body.preview .sat-tile-reference img {
+  width: 100%;
+  display: block;
+  filter: saturate(1.05) contrast(1.02);
+}
+body.preview .sat-ref-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--vt-gold-bright);
+  background: rgba(6, 10, 7, 0.78);
+  border: 1px solid rgba(200, 134, 10, 0.4);
+  padding: 3px 8px;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 2;
+}
+
+/* ── Desktop zoom-out — content fits without scrollbars ─────────
+   `zoom` is a non-standard property, but supported in Chrome / Safari
+   (forever) and Firefox 126+. Affects layout dimensions, so unlike
+   transform: scale it doesn't leave empty space around the slide. */
+@media (min-width: 1100px) and (max-height: 1000px) {
+  body.preview .page { zoom: 0.92; }
+}
+@media (min-width: 1100px) and (max-height: 820px) {
+  body.preview .page { zoom: 0.86; }
+}
+@media (min-width: 1100px) and (max-height: 720px) {
+  body.preview .page { zoom: 0.80; }
+}
+
+/* When zoom is active, hide overflow so no rogue scrollbar appears */
+@media (min-width: 1100px) and (max-height: 1000px) {
+  body.preview .page.active { overflow: hidden; }
+}
+
+/* On mobile: keep overflow auto so swipes can scroll within a slide
+   that's taller than the viewport (e.g. methodology table). */
+@media (max-width: 1099px) {
+  body.preview .page.active { overflow-y: auto; }
+}
 """
 
 
@@ -2968,6 +3213,26 @@ _PREVIEW_JS = r"""
     lbActiveY = false;
     if (dy > 80) closeLb();
   }, { passive: true });
+
+  // ── interactive cover ring: click/tap to replay the count-up ─
+  var coverRing = document.querySelector('body.preview .page-cover .cover-ring');
+  if (coverRing) {
+    coverRing.setAttribute('role', 'button');
+    coverRing.setAttribute('tabindex', '0');
+    coverRing.setAttribute('aria-label', 'Replay score animation');
+    var replayCover = function () {
+      var ringText = coverRing.querySelector('svg text:first-of-type');
+      if (!ringText) return;
+      ringText.dataset.vtCounted = '';
+      var slide1 = document.querySelector('body.preview [data-slide="1"]');
+      if (slide1) triggerEnter(slide1);
+      coverRing.classList.add('replayed');
+    };
+    coverRing.addEventListener('click', replayCover);
+    coverRing.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); replayCover(); }
+    });
+  }
 
   // Boot — show the cover slide
   show(0);
